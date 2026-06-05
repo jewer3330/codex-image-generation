@@ -1,0 +1,36 @@
+{
+  "name": "codex-image-generation",
+  "version": "0.1.0",
+  "description": "Local ComfyUI and OpenAI/GPT-5.5 image generation routes for Codex, including QQ image delivery.",
+  "author": {
+    "name": "Codex Local"
+  },
+  "repository": "https://github.com/jewer3330/codex-image-generation",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "image-generation",
+    "comfyui",
+    "openai",
+    "qq"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Image Generation",
+    "shortDescription": "Route local and OpenAI image generation",
+    "longDescription": "Provides local ComfyUI drawing, OpenAI/GPT-5.5 image generation, output storage rules, and optional QQ delivery wrappers.",
+    "developerName": "Codex Local",
+    "category": "Creativity",
+    "capabilities": [
+      "Write",
+      "Generate Images",
+      "Automation"
+    ],
+    "defaultPrompt": [
+      "Generate this image with the local route.",
+      "Use GPT-5.5 image generation for this prompt.",
+      "Send the generated image to QQ."
+    ]
+  }
+}
+

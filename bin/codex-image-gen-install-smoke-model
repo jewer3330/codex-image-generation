@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="/Volumes/ssd/servers/image-gen"
+PY="${COMFYUI_PYTHON:-${ROOT}/.venv/bin/python}"
+MODEL_DIR="${ROOT}/models/checkpoints"
+MODEL="${MODEL_DIR}/v1-5-pruned-emaonly-fp16.safetensors"
+
+if [[ ! -x "$PY" ]]; then
+  echo "Python environment is missing: $PY" >&2
+  echo "Run bin/codex-image-gen-install first." >&2
+  exit 1
+fi
+if [[ -f "$MODEL" ]]; then
+  echo "Smoke-test model already present: $MODEL"
+  exit 0
+fi
+
+mkdir -p "$MODEL_DIR"
+"$PY" - <<'PY'
+from huggingface_hub import hf_hub_download
+
+path = hf_hub_download(
+    "Comfy-Org/stable-diffusion-v1-5-archive",
+    filename="v1-5-pruned-emaonly-fp16.safetensors",
+    local_dir="/Volumes/ssd/servers/image-gen/models/checkpoints",
+)
+print(path)
+PY

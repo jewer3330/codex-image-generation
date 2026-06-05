@@ -1,0 +1,286 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import base64
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+import uuid
+from pathlib import Path
+
+
+DEFAULT_BASE_URL = "https://api.openai.com/v1"
+SERVER_ROOT = Path(os.environ.get("CODEX_SERVER_ROOT", "/Volumes/ssd/servers"))
+DEFAULT_OUTPUT_DIR = Path(os.environ.get("CODEX_OPENAI_IMAGE_OUTPUT_DIR", SERVER_ROOT / "image-gen" / "openai-outputs"))
+
+
+def get_api_key() -> str:
+    key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if key:
+        return key
+
+    key_file = (
+        os.environ.get("CODEX_OPENAI_API_KEY_FILE")
+        or os.environ.get("OPENAI_API_KEY_FILE")
+        or ""
+    ).strip()
+    if key_file:
+        path = Path(key_file).expanduser()
+        if not path.is_file():
+            raise SystemExit(f"OpenAI API key file not found: {path}")
+        key = path.read_text(encoding="utf-8").strip()
+        if key:
+            return key
+        raise SystemExit(f"OpenAI API key file is empty: {path}")
+
+    codex_auth = Path.home() / ".codex" / "auth.json"
+    if codex_auth.is_file():
+        try:
+            auth_data = json.loads(codex_auth.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise SystemExit(f"Could not read Codex auth file: {codex_auth}: {exc}") from exc
+        key = str(auth_data.get("OPENAI_API_KEY", "")).strip()
+        if key:
+            return key
+
+    raise SystemExit(
+        "Missing OpenAI API key. Set OPENAI_API_KEY or CODEX_OPENAI_API_KEY_FILE."
+    )
+
+
+def openai_headers(api_key: str) -> dict[str, str]:
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    if org := os.environ.get("OPENAI_ORG_ID") or os.environ.get("OPENAI_ORGANIZATION"):
+        headers["OpenAI-Organization"] = org
+    if project := os.environ.get("OPENAI_PROJECT_ID") or os.environ.get("OPENAI_PROJECT"):
+        headers["OpenAI-Project"] = project
+    return headers
+
+
+def post_json(path: str, payload: dict, timeout: int) -> dict:
+    api_key = get_api_key()
+    base_url = os.environ.get("OPENAI_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        f"{base_url}{path}",
+        data=data,
+        headers=openai_headers(api_key),
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise SystemExit(f"OpenAI request failed with HTTP {exc.code}: {body}") from exc
+    except urllib.error.URLError as exc:
+        raise SystemExit(f"OpenAI request failed: {exc}") from exc
+
+
+def build_responses_payload(args: argparse.Namespace) -> dict:
+    tool = {"type": "image_generation", "action": args.action}
+    add_image_options(tool, args)
+    payload = {
+        "model": args.main_model,
+        "input": args.prompt,
+        "tools": [tool],
+    }
+    if args.force_tool:
+        payload["tool_choice"] = {"type": "image_generation"}
+    return payload
+
+
+def build_images_payload(args: argparse.Namespace) -> dict:
+    payload = {
+        "model": args.image_model,
+        "prompt": args.prompt,
+        "n": args.n,
+    }
+    add_image_options(payload, args)
+    if args.moderation:
+        payload["moderation"] = args.moderation
+    return payload
+
+
+def add_image_options(payload: dict, args: argparse.Namespace) -> None:
+    if args.size:
+        payload["size"] = args.size
+    if args.quality:
+        payload["quality"] = args.quality
+    if args.background:
+        payload["background"] = args.background
+    if args.output_format:
+        payload["output_format"] = args.output_format
+    if args.output_compression is not None:
+        payload["output_compression"] = args.output_compression
+
+
+def save_image(data: bytes, output_dir: Path, prefix: str, index: int, extension: str) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    safe_prefix = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in prefix)
+    filename = f"{safe_prefix}_{stamp}_{uuid.uuid4().hex[:8]}_{index:02d}.{extension}"
+    path = output_dir / filename
+    path.write_bytes(data)
+    return path
+
+
+def download_url(url: str, timeout: int) -> bytes:
+    with urllib.request.urlopen(url, timeout=timeout) as resp:
+        return resp.read()
+
+
+def images_from_responses_response(response: dict) -> list[tuple[str, str | None]]:
+    images = []
+    for item in response.get("output", []):
+        if item.get("type") == "image_generation_call" and item.get("result"):
+            images.append((item["result"], item.get("revised_prompt")))
+    return images
+
+
+def images_from_images_response(response: dict) -> list[str]:
+    data = response.get("data")
+    if not isinstance(data, list):
+        return []
+    return [item["b64_json"] for item in data if isinstance(item, dict) and item.get("b64_json")]
+
+
+def save_metadata(path: Path, response: dict, revised_prompt: str | None) -> None:
+    metadata = {
+        "image": str(path),
+        "revised_prompt": revised_prompt,
+        "response_id": response.get("id"),
+        "created_at": int(time.time()),
+    }
+    path.with_suffix(path.suffix + ".json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def maybe_send_qq(paths: list[Path], message: str) -> None:
+    helper = Path(__file__).resolve().with_name("codex-qq-notify-image")
+    for path in paths:
+        subprocess.run([str(helper), str(path), message], check=True)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Generate images through OpenAI GPT-5.5 image generation or Image API."
+    )
+    parser.add_argument("prompt")
+    parser.add_argument(
+        "--api",
+        choices=("responses", "images"),
+        default=os.environ.get("CODEX_OPENAI_DRAW_API", "responses"),
+        help="responses uses gpt-5.5 + image_generation; images uses the Image API.",
+    )
+    parser.add_argument(
+        "--main-model",
+        default=os.environ.get("CODEX_OPENAI_IMAGE_MAIN_MODEL", "gpt-5.5"),
+        help="Mainline model for Responses API image_generation.",
+    )
+    parser.add_argument(
+        "--image-model",
+        default=os.environ.get("CODEX_OPENAI_IMAGE_MODEL", "gpt-image-2"),
+        help="Image model for /v1/images/generations.",
+    )
+    parser.add_argument("--size", default=os.environ.get("CODEX_OPENAI_IMAGE_SIZE", "1024x1024"))
+    parser.add_argument("--quality", default=os.environ.get("CODEX_OPENAI_IMAGE_QUALITY", "auto"))
+    parser.add_argument("--background", default=os.environ.get("CODEX_OPENAI_IMAGE_BACKGROUND", "auto"))
+    parser.add_argument("--output-format", default=os.environ.get("CODEX_OPENAI_IMAGE_FORMAT", "png"))
+    parser.add_argument("--output-compression", type=int, default=None)
+    parser.add_argument("--moderation", choices=("auto", "low"), default=None)
+    parser.add_argument("--action", choices=("auto", "generate", "edit"), default="generate")
+    parser.add_argument("--no-force-tool", action="store_false", dest="force_tool")
+    parser.add_argument("--n", type=int, default=1, help="Number of images for Image API.")
+    parser.add_argument("--prefix", default="openai")
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument("--qq", action="store_true", help="Send generated images to QQ through AstrBot.")
+    parser.add_argument("--qq-message", default="", help="Message to send with --qq.")
+    parser.add_argument("--dry-run", action="store_true", help="Print request JSON and exit.")
+    parser.add_argument("--metadata", action="store_true", help="Write a small metadata JSON next to each image.")
+    parser.set_defaults(force_tool=True)
+    args = parser.parse_args()
+
+    if args.api == "responses":
+        payload = build_responses_payload(args)
+        endpoint = "/responses"
+    else:
+        payload = build_images_payload(args)
+        endpoint = "/images/generations"
+
+    if args.dry_run:
+        print(json.dumps({"endpoint": endpoint, "payload": payload}, ensure_ascii=False, indent=2))
+        return 0
+
+    response = post_json(endpoint, payload, args.timeout)
+    extension = "jpg" if args.output_format == "jpeg" else args.output_format
+    saved_paths: list[Path] = []
+
+    if args.api == "responses":
+        images = images_from_responses_response(response)
+        if not images:
+            print(json.dumps(response, ensure_ascii=False, indent=2), file=sys.stderr)
+            raise SystemExit("OpenAI response did not contain an image_generation_call result.")
+        for index, (image_base64, revised_prompt) in enumerate(images, start=1):
+            path = save_image(
+                base64.b64decode(image_base64),
+                args.output_dir,
+                args.prefix,
+                index,
+                extension,
+            )
+            if args.metadata:
+                save_metadata(path, response, revised_prompt)
+            print(path, flush=True)
+            saved_paths.append(path)
+    else:
+        images = images_from_images_response(response)
+        if not images:
+            urls = [
+                item.get("url")
+                for item in response.get("data", [])
+                if isinstance(item, dict) and item.get("url")
+            ]
+            if not urls:
+                print(json.dumps(response, ensure_ascii=False, indent=2), file=sys.stderr)
+                raise SystemExit("OpenAI image response did not contain b64_json or url data.")
+            for index, url in enumerate(urls, start=1):
+                path = save_image(download_url(url, args.timeout), args.output_dir, args.prefix, index, extension)
+                if args.metadata:
+                    save_metadata(path, response, None)
+                print(path, flush=True)
+                saved_paths.append(path)
+        else:
+            for index, image_base64 in enumerate(images, start=1):
+                path = save_image(
+                    base64.b64decode(image_base64),
+                    args.output_dir,
+                    args.prefix,
+                    index,
+                    extension,
+                )
+                if args.metadata:
+                    save_metadata(path, response, None)
+                print(path, flush=True)
+                saved_paths.append(path)
+
+    if args.qq:
+        message = args.qq_message or "OpenAI image is ready."
+        maybe_send_qq(saved_paths, message)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

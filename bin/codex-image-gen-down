@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCREEN_NAME="codex-image-gen"
+PORT="${CODEX_IMAGE_GEN_PORT:-8188}"
+
+if screen -ls | grep -Fq "$SCREEN_NAME"; then
+  screen -S "$SCREEN_NAME" -X quit
+  echo "Stopped ComfyUI screen session: $SCREEN_NAME"
+else
+  echo "ComfyUI screen session is not running: $SCREEN_NAME"
+fi
+
+pid="$(lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
+if [[ -n "$pid" ]]; then
+  kill $pid
+  echo "Stopped process listening on port ${PORT}: ${pid}"
+fi

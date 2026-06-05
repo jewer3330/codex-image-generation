@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import subprocess
+import time
+import urllib.request
+import uuid
+from pathlib import Path
+
+
+DEFAULT_URL = "http://127.0.0.1:8188"
+DEFAULT_MODEL = "v1-5-pruned-emaonly-fp16.safetensors"
+SERVER_ROOT = Path(os.environ.get("CODEX_SERVER_ROOT", "/Volumes/ssd/servers"))
+OUTPUT_DIR = Path(os.environ.get("CODEX_IMAGE_GEN_OUTPUT_DIR", SERVER_ROOT / "image-gen" / "outputs"))
+
+
+def build_workflow(args: argparse.Namespace) -> dict:
+    return {
+        "3": {
+            "class_type": "KSampler",
+            "inputs": {
+                "seed": args.seed,
+                "steps": args.steps,
+                "cfg": args.cfg,
+                "sampler_name": "euler",
+                "scheduler": "normal",
+                "denoise": 1,
+                "model": ["4", 0],
+                "positive": ["6", 0],
+                "negative": ["7", 0],
+                "latent_image": ["5", 0],
+            },
+        },
+        "4": {
+            "class_type": "CheckpointLoaderSimple",
+            "inputs": {"ckpt_name": args.model},
+        },
+        "5": {
+            "class_type": "EmptyLatentImage",
+            "inputs": {"width": args.width, "height": args.height, "batch_size": 1},
+        },
+        "6": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {"text": args.prompt, "clip": ["4", 1]},
+        },
+        "7": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {"text": args.negative, "clip": ["4", 1]},
+        },
+        "8": {
+            "class_type": "VAEDecode",
+            "inputs": {"samples": ["3", 0], "vae": ["4", 2]},
+        },
+        "9": {
+            "class_type": "SaveImage",
+            "inputs": {"filename_prefix": args.prefix, "images": ["8", 0]},
+        },
+    }
+
+
+def post_json(url: str, payload: dict) -> dict:
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def get_json(url: str) -> dict:
+    with urllib.request.urlopen(url, timeout=30) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Generate an image through local ComfyUI.")
+    parser.add_argument("prompt")
+    parser.add_argument("--url", default=DEFAULT_URL)
+    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--negative", default="low quality, blurry, distorted, bad anatomy, watermark, text")
+    parser.add_argument("--width", type=int, default=512)
+    parser.add_argument("--height", type=int, default=512)
+    parser.add_argument("--steps", type=int, default=20)
+    parser.add_argument("--cfg", type=float, default=7.0)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--timeout", type=int, default=600)
+    parser.add_argument("--prefix", default="codex")
+    parser.add_argument("--qq", action="store_true", help="Send generated images to QQ through AstrBot.")
+    parser.add_argument("--qq-message", default="", help="Message to send with --qq.")
+    args = parser.parse_args()
+
+    if args.seed == 0:
+        args.seed = int(time.time() * 1000) % 2_147_483_647
+    args.prefix = f"{args.prefix}_{uuid.uuid4().hex[:8]}"
+
+    payload = {"prompt": build_workflow(args), "client_id": f"codex-draw-{uuid.uuid4()}"}
+    queued = post_json(f"{args.url.rstrip('/')}/prompt", payload)
+    prompt_id = queued["prompt_id"]
+
+    deadline = time.time() + args.timeout
+    while time.time() < deadline:
+        history = get_json(f"{args.url.rstrip('/')}/history/{prompt_id}")
+        item = history.get(prompt_id)
+        if item:
+            outputs = item.get("outputs", {})
+            paths = []
+            for output in outputs.values():
+                for image in output.get("images", []):
+                    if image.get("type") == "output":
+                        paths.append(OUTPUT_DIR / image["subfolder"] / image["filename"])
+            if paths:
+                for path in paths:
+                    print(path, flush=True)
+                if args.qq:
+                    helper = Path(__file__).resolve().with_name("codex-qq-notify-image")
+                    message = args.qq_message or "Image is ready."
+                    for path in paths:
+                        subprocess.run([str(helper), str(path), message], check=True)
+                return 0
+            raise SystemExit(json.dumps(item, ensure_ascii=False, indent=2))
+        time.sleep(1)
+
+    raise SystemExit(f"Timed out waiting for ComfyUI prompt {prompt_id}")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

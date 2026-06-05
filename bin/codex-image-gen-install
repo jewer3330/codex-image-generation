@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="/Volumes/ssd/servers/image-gen"
+COMFY="${COMFYUI_HOME:-${ROOT}/ComfyUI}"
+PYTHON_BASE="${CODEX_PYTHON:-/Users/zhaojun/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3}"
+VENV="${ROOT}/.venv"
+
+if [[ ! -d "$COMFY" ]]; then
+  tmp_zip="${ROOT}/comfyui-main.zip"
+  mkdir -p "$ROOT"
+  curl -L --fail --retry 3 --connect-timeout 20 -o "$tmp_zip" \
+    https://github.com/comfyanonymous/ComfyUI/archive/refs/heads/master.zip
+  rm -rf "${ROOT}/ComfyUI-master"
+  unzip -q "$tmp_zip" -d "$ROOT"
+  mv "${ROOT}/ComfyUI-master" "$COMFY"
+  rm -f "$tmp_zip"
+fi
+
+mkdir -p "${ROOT}/models" "${ROOT}/outputs" "${ROOT}/logs"
+cat > "${COMFY}/extra_model_paths.yaml" <<'EOF'
+image_gen:
+  base_path: /Volumes/ssd/servers/image-gen
+  is_default: true
+  checkpoints: models/checkpoints
+  text_encoders: |
+    models/text_encoders
+    models/clip
+  clip_vision: models/clip_vision
+  configs: models/configs
+  controlnet: models/controlnet
+  diffusion_models: |
+    models/diffusion_models
+    models/unet
+  embeddings: models/embeddings
+  loras: models/loras
+  upscale_models: models/upscale_models
+  vae: models/vae
+  audio_encoders: models/audio_encoders
+  model_patches: models/model_patches
+EOF
+mkdir -p "${ROOT}/models"/{checkpoints,text_encoders,clip,clip_vision,configs,controlnet,diffusion_models,unet,embeddings,loras,upscale_models,vae,audio_encoders,model_patches}
+
+if [[ ! -x "${VENV}/bin/python" ]]; then
+  "$PYTHON_BASE" -m venv "$VENV"
+fi
+
+"${VENV}/bin/python" -m pip install --upgrade pip setuptools wheel
+"${VENV}/bin/python" -m pip install -r "${COMFY}/requirements.txt"
+
+echo "ComfyUI Python environment ready: ${VENV}"

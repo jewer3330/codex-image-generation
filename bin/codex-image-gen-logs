@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SERVER_ROOT="${CODEX_SERVER_ROOT:-/Volumes/ssd/servers}"
+IMAGE_GEN_HOME="${CODEX_IMAGE_GEN_HOME:-${SERVER_ROOT}/image-gen}"
+LOG_FILE="${CODEX_IMAGE_GEN_LOG:-${IMAGE_GEN_HOME}/logs/comfyui.log}"
+
+if [[ ! -f "$LOG_FILE" ]]; then
+  echo "No ComfyUI log yet. Start it with bin/codex-image-gen-up." >&2
+  exit 1
+fi
+
+tail -f "$LOG_FILE"

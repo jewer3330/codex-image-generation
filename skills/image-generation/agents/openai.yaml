@@ -1,0 +1,4 @@
+interface:
+  display_name: "Image Generation"
+  short_description: "Route local and OpenAI image generation"
+  default_prompt: "Use $image-generation to choose the right image route, generate an image, and send it to QQ if needed."

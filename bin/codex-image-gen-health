@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+URL="${CODEX_IMAGE_GEN_URL:-http://127.0.0.1:8188}"
+
+curl --silent --show-error --fail "${URL%/}/system_stats" | python3 -m json.tool

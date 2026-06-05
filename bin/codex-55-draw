@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec "$(dirname "$0")/codex-openai-draw" --api responses --main-model gpt-5.5 "$@"
