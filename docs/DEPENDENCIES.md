@@ -3,7 +3,8 @@
 ## Runtime
 
 - Python 3.10+ for the image route wrappers.
-- `curl`, `screen`, `lsof`, `unzip`, and standard Unix shell tools.
+- `curl`, `screen`, `lsof`, `unzip`, and standard Unix shell tools for the macOS/Linux/WSL service wrappers.
+- PowerShell 5+ or PowerShell 7+ for Windows installation.
 - ComfyUI for the local image route.
 - OpenAI API access for `codex-openai-draw` and `codex-55-draw`.
 - Optional AstrBot OpenAPI with `im` and `file` scopes for QQ image delivery.

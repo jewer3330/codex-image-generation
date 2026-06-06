@@ -19,8 +19,16 @@ installed `.codex/skills/image-generation` skill.
 
 ## Install
 
+macOS/Linux/WSL/Git Bash:
+
 ```bash
 scripts/install-to-codex.sh
+```
+
+Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-to-codex.ps1
 ```
 
 Runtime ComfyUI files, models, logs, and generated images stay under
@@ -33,6 +41,23 @@ CODEX_HOME=/opt/codex \
 CODEX_SERVER_ROOT=/srv/codex \
 scripts/install-to-codex.sh
 ```
+
+The installer copies source-controlled files into `.codex/bin`,
+`.codex/skills/image-generation`, `.codex/plugins/codex-image-generation`, and
+the personal marketplace file.
+
+## Marketplace
+
+Install scripts register this plugin in the personal Codex marketplace at
+`${CODEX_MARKETPLACE_FILE:-$CODEX_HOME/.agents/plugins/marketplace.json}` with
+source path `./plugins/codex-image-generation`.
+
+## Windows Notes
+
+The Python image wrappers can run on Windows with Python 3.10+ and the needed
+environment variables. The ComfyUI service management wrappers are Unix shell
+scripts today, so use WSL/Git Bash/Docker Desktop for those until native
+PowerShell service wrappers are added.
 
 ## Check
 

@@ -10,3 +10,7 @@
   a local `.codex` installation.
 - Made default install and runtime paths portable: `CODEX_HOME` defaults to
   `$HOME/.codex`, and `CODEX_SERVER_ROOT` defaults to `$HOME/.codex/servers`.
+- Added a PowerShell installer for Windows file installation.
+- Installers now copy the full plugin source into
+  `.codex/plugins/codex-image-generation` and register it in the personal Codex
+  marketplace.

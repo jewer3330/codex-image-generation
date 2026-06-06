@@ -4,12 +4,20 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CODEX_HOME="${CODEX_HOME:-${HOME}/.codex}"
 CODEX_SERVER_ROOT="${CODEX_SERVER_ROOT:-${HOME}/.codex/servers}"
+CODEX_PLUGIN_DIR="${CODEX_HOME}/plugins/codex-image-generation"
+MARKETPLACE_FILE="${CODEX_MARKETPLACE_FILE:-${CODEX_HOME}/.agents/plugins/marketplace.json}"
 
-mkdir -p "${CODEX_HOME}/bin" "${CODEX_HOME}/skills"
+mkdir -p "${CODEX_HOME}/bin" "${CODEX_HOME}/skills" "${CODEX_HOME}/plugins"
 mkdir -p "${CODEX_SERVER_ROOT}/image-gen"
+mkdir -p "$(dirname "$MARKETPLACE_FILE")"
 
 rsync -a "${REPO_ROOT}/bin/" "${CODEX_HOME}/bin/"
 rsync -a --delete "${REPO_ROOT}/skills/image-generation/" "${CODEX_HOME}/skills/image-generation/"
+rsync -a --delete \
+  --exclude '.git/' \
+  --exclude '.codegraph/' \
+  --exclude '__pycache__/' \
+  "${REPO_ROOT}/" "${CODEX_PLUGIN_DIR}/"
 
 chmod +x \
   "${CODEX_HOME}/bin/codex-draw" \
@@ -24,4 +32,27 @@ chmod +x \
   "${CODEX_HOME}/bin/codex-qq-notify-image" \
   "${CODEX_HOME}/skills/image-generation/scripts/check-image-routes.sh"
 
+python3 - "$MARKETPLACE_FILE" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+marketplace = Path(sys.argv[1])
+entry = {
+    "name": "codex-image-generation",
+    "source": {"source": "local", "path": "./plugins/codex-image-generation"},
+    "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+    "category": "Creativity",
+}
+if marketplace.exists():
+    data = json.loads(marketplace.read_text(encoding="utf-8"))
+else:
+    data = {"name": "personal", "interface": {"displayName": "Personal"}, "plugins": []}
+plugins = data.setdefault("plugins", [])
+plugins[:] = [plugin for plugin in plugins if plugin.get("name") != entry["name"]]
+plugins.append(entry)
+marketplace.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+PY
+
 echo "Installed Codex image generation source into ${CODEX_HOME}"
+echo "Registered Codex Image Generation in ${MARKETPLACE_FILE}"

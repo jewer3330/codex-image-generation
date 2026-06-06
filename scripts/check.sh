@@ -15,6 +15,11 @@ zsh -n \
   "${REPO_ROOT}/scripts/install-to-codex.sh" \
   "${REPO_ROOT}/skills/image-generation/scripts/check-image-routes.sh"
 
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -Command '$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $args[0]), [ref]$tokens, [ref]$errors) > $null; if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }' \
+    "${REPO_ROOT}/scripts/install-to-codex.ps1"
+fi
+
 python3 -m py_compile \
   "${REPO_ROOT}/bin/codex-draw" \
   "${REPO_ROOT}/bin/codex-openai-draw"
@@ -22,4 +27,3 @@ python3 -m py_compile \
 "${REPO_ROOT}/bin/codex-openai-draw" "route check" --dry-run >/dev/null
 
 echo "codex-image-generation checks ok"
-
