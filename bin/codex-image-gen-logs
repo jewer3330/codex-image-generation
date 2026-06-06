@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SERVER_ROOT="${CODEX_SERVER_ROOT:-/Volumes/ssd/servers}"
+SERVER_ROOT="${CODEX_SERVER_ROOT:-${HOME}/.codex/servers}"
 IMAGE_GEN_HOME="${CODEX_IMAGE_GEN_HOME:-${SERVER_ROOT}/image-gen}"
 LOG_FILE="${CODEX_IMAGE_GEN_LOG:-${IMAGE_GEN_HOME}/logs/comfyui.log}"
 

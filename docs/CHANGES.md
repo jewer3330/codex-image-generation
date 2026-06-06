@@ -8,4 +8,5 @@
 - Documented dependencies, model/output boundaries, and configurable paths.
 - Added install and check scripts so this source tree can promote its files into
   a local `.codex` installation.
-
+- Made default install and runtime paths portable: `CODEX_HOME` defaults to
+  `$HOME/.codex`, and `CODEX_SERVER_ROOT` defaults to `$HOME/.codex/servers`.

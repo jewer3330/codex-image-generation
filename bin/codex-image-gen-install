@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/Volumes/ssd/servers/image-gen"
+SERVER_ROOT="${CODEX_SERVER_ROOT:-${HOME}/.codex/servers}"
+ROOT="${CODEX_IMAGE_GEN_HOME:-${SERVER_ROOT}/image-gen}"
 COMFY="${COMFYUI_HOME:-${ROOT}/ComfyUI}"
-PYTHON_BASE="${CODEX_PYTHON:-/Users/zhaojun/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3}"
+PYTHON_BASE="${CODEX_PYTHON:-python3}"
 VENV="${ROOT}/.venv"
 
 if [[ ! -d "$COMFY" ]]; then
@@ -20,7 +21,7 @@ fi
 mkdir -p "${ROOT}/models" "${ROOT}/outputs" "${ROOT}/logs"
 cat > "${COMFY}/extra_model_paths.yaml" <<'EOF'
 image_gen:
-  base_path: /Volumes/ssd/servers/image-gen
+  base_path: __CODEX_IMAGE_GEN_ROOT__
   is_default: true
   checkpoints: models/checkpoints
   text_encoders: |
@@ -39,6 +40,13 @@ image_gen:
   audio_encoders: models/audio_encoders
   model_patches: models/model_patches
 EOF
+"$PYTHON_BASE" - "$ROOT" "${COMFY}/extra_model_paths.yaml" <<'PY'
+from pathlib import Path
+import sys
+
+root, config = sys.argv[1], Path(sys.argv[2])
+config.write_text(config.read_text(encoding="utf-8").replace("__CODEX_IMAGE_GEN_ROOT__", root), encoding="utf-8")
+PY
 mkdir -p "${ROOT}/models"/{checkpoints,text_encoders,clip,clip_vision,configs,controlnet,diffusion_models,unet,embeddings,loras,upscale_models,vae,audio_encoders,model_patches}
 
 if [[ ! -x "${VENV}/bin/python" ]]; then

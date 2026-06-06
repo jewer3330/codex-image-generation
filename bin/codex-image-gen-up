@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SERVER_ROOT="${CODEX_SERVER_ROOT:-/Volumes/ssd/servers}"
+SERVER_ROOT="${CODEX_SERVER_ROOT:-${HOME}/.codex/servers}"
 ROOT="${CODEX_IMAGE_GEN_HOME:-${SERVER_ROOT}/image-gen}"
 COMFY="${COMFYUI_HOME:-${ROOT}/ComfyUI}"
 PY="${COMFYUI_PYTHON:-${ROOT}/.venv/bin/python}"

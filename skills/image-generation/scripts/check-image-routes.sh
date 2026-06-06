@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CODEX_HOME="${CODEX_HOME:-$(cd "${SCRIPT_DIR}/../../.." && pwd)}"
-SERVER_ROOT="${CODEX_SERVER_ROOT:-/Volumes/ssd/servers}"
+SERVER_ROOT="${CODEX_SERVER_ROOT:-${HOME}/.codex/servers}"
 IMAGE_HOME="${CODEX_IMAGE_GEN_HOME:-${SERVER_ROOT}/image-gen}"
 
 required=(

@@ -11,7 +11,7 @@ from pathlib import Path
 
 DEFAULT_URL = "http://127.0.0.1:8188"
 DEFAULT_MODEL = "v1-5-pruned-emaonly-fp16.safetensors"
-SERVER_ROOT = Path(os.environ.get("CODEX_SERVER_ROOT", "/Volumes/ssd/servers"))
+SERVER_ROOT = Path(os.environ.get("CODEX_SERVER_ROOT", Path.home() / ".codex" / "servers"))
 OUTPUT_DIR = Path(os.environ.get("CODEX_IMAGE_GEN_OUTPUT_DIR", SERVER_ROOT / "image-gen" / "outputs"))
 
 

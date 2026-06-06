@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/Volumes/ssd/servers/image-gen"
+SERVER_ROOT="${CODEX_SERVER_ROOT:-${HOME}/.codex/servers}"
+ROOT="${CODEX_IMAGE_GEN_HOME:-${SERVER_ROOT}/image-gen}"
 PY="${COMFYUI_PYTHON:-${ROOT}/.venv/bin/python}"
 MODEL_DIR="${ROOT}/models/checkpoints"
 MODEL="${MODEL_DIR}/v1-5-pruned-emaonly-fp16.safetensors"
@@ -17,13 +18,14 @@ if [[ -f "$MODEL" ]]; then
 fi
 
 mkdir -p "$MODEL_DIR"
-"$PY" - <<'PY'
+"$PY" - "$MODEL_DIR" <<'PY'
 from huggingface_hub import hf_hub_download
+import sys
 
 path = hf_hub_download(
     "Comfy-Org/stable-diffusion-v1-5-archive",
     filename="v1-5-pruned-emaonly-fp16.safetensors",
-    local_dir="/Volumes/ssd/servers/image-gen/models/checkpoints",
+    local_dir=sys.argv[1],
 )
 print(path)
 PY

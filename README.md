@@ -24,7 +24,15 @@ scripts/install-to-codex.sh
 ```
 
 Runtime ComfyUI files, models, logs, and generated images stay under
-`/Volumes/ssd/servers/image-gen`.
+`${CODEX_SERVER_ROOT:-$HOME/.codex/servers}/image-gen`.
+
+To use another disk or service root:
+
+```bash
+CODEX_HOME=/opt/codex \
+CODEX_SERVER_ROOT=/srv/codex \
+scripts/install-to-codex.sh
+```
 
 ## Check
 
@@ -40,4 +48,3 @@ the installed skill health check when services are available.
 Do not commit generated images, ComfyUI checkouts, model checkpoints, OpenAI
 metadata with private prompts, API keys, or virtualenvs. Commit only wrappers,
 skills, documentation, and installer logic.
-

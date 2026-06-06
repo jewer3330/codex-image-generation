@@ -3,13 +3,13 @@
 ## Storage
 
 ```text
-CODEX_HOME=/Volumes/ssd/work/.codex
-CODEX_SERVER_ROOT=/Volumes/ssd/servers
-CODEX_IMAGE_GEN_HOME=/Volumes/ssd/servers/image-gen
-COMFYUI_HOME=/Volumes/ssd/servers/image-gen/ComfyUI
-COMFYUI_PYTHON=/Volumes/ssd/servers/image-gen/.venv/bin/python
-CODEX_IMAGE_GEN_OUTPUT_DIR=/Volumes/ssd/servers/image-gen/outputs
-CODEX_OPENAI_IMAGE_OUTPUT_DIR=/Volumes/ssd/servers/image-gen/openai-outputs
+CODEX_HOME=$HOME/.codex
+CODEX_SERVER_ROOT=$HOME/.codex/servers
+CODEX_IMAGE_GEN_HOME=$CODEX_SERVER_ROOT/image-gen
+COMFYUI_HOME=$CODEX_IMAGE_GEN_HOME/ComfyUI
+COMFYUI_PYTHON=$CODEX_IMAGE_GEN_HOME/.venv/bin/python
+CODEX_IMAGE_GEN_OUTPUT_DIR=$CODEX_IMAGE_GEN_HOME/outputs
+CODEX_OPENAI_IMAGE_OUTPUT_DIR=$CODEX_IMAGE_GEN_HOME/openai-outputs
 ```
 
 Repository files contain wrappers and docs only. Runtime data stays under `servers`.
@@ -60,7 +60,7 @@ Required environment:
 
 ```text
 ASTRBOT_URL=http://127.0.0.1:6185
-ASTRBOT_OPENAPI_KEY_FILE=/Volumes/ssd/servers/astrbot/data/codex_openapi_im.key
+ASTRBOT_OPENAPI_KEY_FILE=$CODEX_SERVER_ROOT/astrbot/data/codex_openapi_im.key
 CODEX_QQ_NOTIFY_UMO=<AstrBot unified message origin>
 ```
 

@@ -28,7 +28,7 @@ The primary wrappers use Python standard library modules only:
 - `huggingface_hub`
 
 ComfyUI itself installs its upstream `requirements.txt` into the service venv
-under `/Volumes/ssd/servers/image-gen/.venv`.
+under `${CODEX_IMAGE_GEN_HOME:-$CODEX_SERVER_ROOT/image-gen}/.venv`.
 
 ## OpenAI Models
 
@@ -37,4 +37,3 @@ under `/Volumes/ssd/servers/image-gen/.venv`.
 
 These defaults can be overridden with `CODEX_OPENAI_IMAGE_MAIN_MODEL` and
 `CODEX_OPENAI_IMAGE_MODEL`.
-

@@ -2,9 +2,11 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CODEX_HOME="${CODEX_HOME:-/Volumes/ssd/work/.codex}"
+CODEX_HOME="${CODEX_HOME:-${HOME}/.codex}"
+CODEX_SERVER_ROOT="${CODEX_SERVER_ROOT:-${HOME}/.codex/servers}"
 
 mkdir -p "${CODEX_HOME}/bin" "${CODEX_HOME}/skills"
+mkdir -p "${CODEX_SERVER_ROOT}/image-gen"
 
 rsync -a "${REPO_ROOT}/bin/" "${CODEX_HOME}/bin/"
 rsync -a --delete "${REPO_ROOT}/skills/image-generation/" "${CODEX_HOME}/skills/image-generation/"
@@ -23,4 +25,3 @@ chmod +x \
   "${CODEX_HOME}/skills/image-generation/scripts/check-image-routes.sh"
 
 echo "Installed Codex image generation source into ${CODEX_HOME}"
-
