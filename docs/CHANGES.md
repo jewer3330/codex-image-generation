@@ -14,3 +14,5 @@
 - Installers now copy the full plugin source into
   `.codex/plugins/codex-image-generation` and register it in the personal Codex
   marketplace.
+- Made install lightweight: ComfyUI runtime directories are created by service
+  setup/start commands, not by the base plugin installer.

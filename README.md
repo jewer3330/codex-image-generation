@@ -31,8 +31,14 @@ Windows PowerShell:
 powershell -ExecutionPolicy Bypass -File scripts/install-to-codex.ps1
 ```
 
-Runtime ComfyUI files, models, logs, and generated images stay under
-`${CODEX_SERVER_ROOT:-$HOME/.codex/servers}/image-gen`.
+The install script is lightweight: it copies source-controlled wrappers, skills,
+plugin source, and marketplace metadata. It does not install ComfyUI, require
+Docker, download models, or create service runtime data by default.
+
+When you enable the local ComfyUI route, runtime ComfyUI files, models, logs,
+and generated images stay under
+`${CODEX_SERVER_ROOT:-$HOME/.codex/servers}/image-gen` or your
+`CODEX_IMAGE_GEN_HOME` override.
 
 To use another disk or service root:
 
@@ -56,8 +62,9 @@ source path `./plugins/codex-image-generation`.
 
 The Python image wrappers can run on Windows with Python 3.10+ and the needed
 environment variables. The ComfyUI service management wrappers are Unix shell
-scripts today, so use WSL/Git Bash/Docker Desktop for those until native
-PowerShell service wrappers are added.
+scripts today, so use WSL/Git Bash for those until native PowerShell service
+wrappers are added. Docker Desktop is optional and only relevant if you choose a
+Docker-based ComfyUI deployment.
 
 ## Check
 

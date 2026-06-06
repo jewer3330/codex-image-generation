@@ -9,6 +9,9 @@
 - OpenAI API access for `codex-openai-draw` and `codex-55-draw`.
 - Optional AstrBot OpenAPI with `im` and `file` scopes for QQ image delivery.
 
+Docker is not required to install this plugin. It is only needed if you choose a
+Docker-based ComfyUI runtime.
+
 ## Python Libraries
 
 The primary wrappers use Python standard library modules only:
